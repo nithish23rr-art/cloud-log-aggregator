@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CloudLog Aggregator</title>
+    <style>
+        body { font-family: Arial; margin: 40px; background: #f4f4f9; }
+        h2 { color: #333; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto; }
+        form { margin-top: 20px; }
+        input[type="text"] { width: 70%; padding: 10px; }
+        input[type="submit"] { padding: 10px 20px; background: #007BFF; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Centralized Cloud Log Aggregator</h2>
+    
+    <h3>Live Logs:</h3>
+    <pre>{% for log in logs %}{{ log }}{% endfor %}</pre>
+
+    <form action="/add-log" method="POST">
+        <input type="text" name="message" placeholder="Type a test log message (e.g., ERROR: Server timeout)..." required>
+        <input type="submit" value="Send Log">
+    </form>
+</body>
+</html>

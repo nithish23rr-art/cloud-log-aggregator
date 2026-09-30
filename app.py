@@ -19,5 +19,5 @@ def add_log():
             f.write(f"{log_msg}\n")
     return redirect(url_for('index'))
 
-if '__name__' == '__main__':
+if __name__ == '__main__':
     app.run(debug=True, port=5000)

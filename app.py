@@ -26,6 +26,7 @@ class LogEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String(500), nullable=False)
     level = db.Column(db.String(50), nullable=False) # INFO, ERROR, WARNING
+    ip_address = db.Column(db.String(50), default="127.0.0.1") # சர்வர் ஐபி முகவரி
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 @login_manager.user_loader
@@ -45,20 +46,33 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username']).first()
-        if user and check_password_hash(user.password, request.form['password']):
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password, password):
             login_user(user)
             return redirect(url_for('index'))
-        flash('Invalid username or password')
+        flash('Invalid username or password, please try again.')
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        hashed_password = generate_password_hash(request.form['password'], method='pbkdf2:sha256')
-        new_user = User(username=request.form['username'], password=hashed_password)
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Username already exists. Please choose another.')
+            return redirect(url_for('signup'))
+            
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+        new_user = User(username=username, password=hashed_password)
         db.session.add(new_user)
         db.session.commit()
+        
+        flash('Account created successfully! Please login.')
         return redirect(url_for('login'))
     return render_template('signup.html')
 
@@ -69,17 +83,35 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/add_log', methods=['POST'])
-@login_required
 def add_log():
     message = request.form.get('message')
     level = request.form.get('level', 'INFO')
+    
+    # லாக் அனுப்பும் ஏஜென்ட்டின் உண்மையான IP முகவரியைக் கண்டறிதல்
+    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr) or "127.0.0.1"
+    
     if message:
-        new_log = LogEntry(message=message, level=level)
+        new_log = LogEntry(message=message, level=level, ip_address=ip_address)
         db.session.add(new_log)
         db.session.commit()
         
-        # Real-time broadcast using WebSockets
-        socketio.emit('new_log', {'message': message, 'level': level, 'timestamp': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')})
+        formatted_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # WebSocket மூலம் அனைத்து கிளைண்ட்களுக்கும் IP உடன் சேர்த்து அனுப்புதல்
+        socketio.emit('new_log', {
+            'message': message, 
+            'level': level, 
+            'ip_address': ip_address,
+            'timestamp': formatted_time
+        })
+    return "Log received", 200
+
+@app.route('/clear_logs', methods=['POST'])
+@login_required
+def clear_logs():
+    LogEntry.query.delete()
+    db.session.commit()
+    flash('All logs cleared successfully.')
     return redirect(url_for('index'))
 
 if _name_ == '_main_':

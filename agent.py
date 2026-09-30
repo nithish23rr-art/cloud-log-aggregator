@@ -14,6 +14,7 @@ def send_logs():
     print("Log Agent started... Monitoring logs.")
 
     # Usually we write a Lock Entry to Test
+    
     with open(LOG_FILE, "a") as f:
         f.write(f"INFO: New connection test at {time.ctime()}\n")
 

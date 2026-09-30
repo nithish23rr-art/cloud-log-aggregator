@@ -1,10 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
-
-app = Flask(_name_)
+app = Flask(__name__)   
 LOG_FILE = "logs/app_activity.log"
 
-@app.route('/')
+@app.route("/")
 def index():
     logs = []
     if os.path.exists(LOG_FILE):
@@ -20,5 +19,5 @@ def add_log():
             f.write(f"{log_msg}\n")
     return redirect(url_for('index'))
 
-if "_name_" == '_main_':
+if '__name__' == '__main__':
     app.run(debug=True, port=5000)

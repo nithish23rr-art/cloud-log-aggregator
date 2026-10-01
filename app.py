@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
@@ -40,7 +41,10 @@ class Log(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except (TypeError, ValueError):
+        return None
 
 
 @app.route('/')
@@ -89,19 +93,25 @@ def add_log():
 
 @socketio.on('terminal_command')
 def handle_terminal_command(data):
-    cmd = data.get('command', '').strip()
-    response_msg = f">> {cmd}\n"
+    if isinstance(data, dict):
+        cmd = str(data.get('command', '') or '').strip()
+    elif isinstance(data, str):
+        cmd = data.strip()
+    else:
+        cmd = ''
+
+    response_msg = f'>> {cmd}\n'
 
     if cmd == 'help':
-        response_msg += "Available commands: status, mesh-check, clear, version\n"
+        response_msg += 'Available commands: status, mesh-check, clear, version\n'
     elif cmd == 'status':
-        response_msg += "M&K Nexus Cloud Core: ONLINE\nActive Clusters: Mumbai, London, Singapore\n"
+        response_msg += 'M&K Nexus Cloud Core: ONLINE\nActive Clusters: Mumbai, London, Singapore\n'
     elif cmd == 'mesh-check':
-        response_msg += "Cross-Cluster Latency: 14ms. Zero-Trust Vault: SECURE.\n"
+        response_msg += 'Cross-Cluster Latency: 14ms. Zero-Trust Vault: SECURE.\n'
     elif cmd == 'version':
-        response_msg += "M&K Enterprise Intelligence Terminal v15.0\n"
+        response_msg += 'M&K Enterprise Intelligence Terminal v15.0\n'
     elif cmd == 'clear':
-        response_msg += "CLEAR"
+        response_msg += 'CLEAR'
     else:
         response_msg += f"Command not recognized: {cmd}. Type 'help' for options.\n"
 
@@ -111,8 +121,8 @@ def handle_terminal_command(data):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
         user = User.query.filter_by(username=username).first()
 
         if user and user.password == password:
@@ -128,8 +138,8 @@ def login():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
 
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:

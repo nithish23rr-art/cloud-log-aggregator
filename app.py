@@ -26,7 +26,7 @@ class LogEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String(500), nullable=False)
     level = db.Column(db.String(50), nullable=False) # INFO, ERROR, WARNING
-    ip_address = db.Column(db.String(50), default="127.0.0.1") # சர்வர் ஐபி முகவரி
+    ip_address = db.Column(db.String(50), default="127.0.0.1") # Server IP address
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 @login_manager.user_loader
@@ -87,7 +87,7 @@ def add_log():
     message = request.form.get('message')
     level = request.form.get('level', 'INFO')
     
-    # லாக் அனுப்பும் ஏஜென்ட்டின் உண்மையான IP முகவரியைக் கண்டறிதல்
+    # Identifying the actual IP address of the log-sending agent
     ip_address = request.headers.get('X-Forwarded-For', request.remote_addr) or "127.0.0.1"
     
     if message:
@@ -97,7 +97,7 @@ def add_log():
         
         formatted_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         
-        # WebSocket மூலம் அனைத்து கிளைண்ட்களுக்கும் IP உடன் சேர்த்து அனுப்புதல்
+        # Sending to all clients via WebSocket, including the IP address
         socketio.emit('new_log', {
             'message': message, 
             'level': level, 

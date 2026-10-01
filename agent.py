@@ -2,7 +2,7 @@ import requests
 import time
 import random
 
-# சென்ட்ரல் பிளாஸ்க் சர்வர் முகவரி
+# Central Flask server address
 SERVER_URL = "http://127.0.0.1:5000/add_log"
 
 LOG_LEVELS = ["INFO", "WARNING", "ERROR"]
@@ -25,7 +25,7 @@ SAMPLE_MESSAGES = {
     ]
 }
 
-# பல வெவ்வேறு கிளவுட் சர்வர்களின் ஐபி முகவரிகளைப் போல சிமுலேஷன் செய்தல்
+#  Simulating the IP addresses of various cloud servers.
 SERVER_IPS = [
     "192.168.1.10", 
     "10.0.0.25", 
@@ -43,7 +43,7 @@ def send_log_to_server():
             'message': message,
             'level': level
         }
-        # போலி ஐபி முகவரியை ஹெடரில் இணைத்து அனுப்புதல் (Custom Header for Simulation)
+        # Sending a fake IP address in the header (Custom Header for Simulation)
         headers = {
             'X-Forwarded-For': fake_ip
         }
@@ -60,5 +60,6 @@ if _name_ == "_main_":
     print("Enterprise Log Agent is running and sending simulated multi-server logs...")
     while True:
         send_log_to_server()
-        # ஒவ்வொரு 6 விநாடிகளுக்கு ஒருமுறை லாக் அனுப்பப்படும்
+
+        # A log will be sent every 6 seconds.
         time.sleep(6)

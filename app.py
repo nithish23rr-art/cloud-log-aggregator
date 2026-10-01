@@ -6,11 +6,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'mk-nexus-fallback-key-dev-only')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'mknexus_ultimate.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['WTF_CSRF_ENABLED'] = True
@@ -27,8 +28,16 @@ login_manager.login_view = 'login'
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(100), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='Admin')
+
+    def set_password(self, password):
+        """Hash and set password using Werkzeug."""
+        self.password = generate_password_hash(password)
+
+    def check_password(self, password):
+        """Check if provided password matches hash."""
+        return check_password_hash(self.password, password)
 
 
 class Log(db.Model):
@@ -147,7 +156,7 @@ def login():
                 return render_template('login.html')
 
             user = User.query.filter_by(username=username).first()
-            if user and user.password == password:
+            if user and user.check_password(password):
                 login_user(user)
                 flash('Successfully logged into M&K Nexus Cloud!', 'success')
                 return redirect(url_for('index'))
@@ -179,7 +188,8 @@ def signup():
                 flash('Username already exists. Please choose another.', 'warning')
                 return redirect(url_for('signup'))
 
-            new_user = User(username=username, password=password, role='Admin')
+            new_user = User(username=username, role='Admin')
+            new_user.set_password(password)
             db.session.add(new_user)
             db.session.commit()
 

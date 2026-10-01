@@ -25,38 +25,40 @@ SAMPLE_MESSAGES = {
     ]
 }
 
-#  Simulating the IP addresses of various cloud servers.
+# Simulating the IP addresses of various cloud servers.
 SERVER_IPS = [
-    "192.168.1.10", 
-    "10.0.0.25", 
-    "172.16.0.5", 
+    "192.168.1.10",
+    "10.0.0.25",
+    "172.16.0.5",
     "192.168.1.50"
 ]
+
 
 def send_log_to_server():
     level = random.choice(LOG_LEVELS)
     message = random.choice(SAMPLE_MESSAGES[level])
     fake_ip = random.choice(SERVER_IPS)
-    
+
     try:
         data = {
-            'message': message,
-            'level': level
+            "message": message,
+            "level": level
         }
-        # Sending a fake IP address in the header (Custom Header for Simulation)
+        # Sending a fake IP address in the header (custom header for simulation).
         headers = {
-            'X-Forwarded-For': fake_ip
+            "X-Forwarded-For": fake_ip
         }
-        
-        response = requests.post(SERVER_URL, data=data, headers=headers)
+
+        response = requests.post(SERVER_URL, data=data, headers=headers, timeout=10)
         if response.status_code == 200:
             print(f"Log sent from IP [{fake_ip}] : [{level}] {message}")
         else:
             print("Failed to send log, Status code:", response.status_code)
-    except Exception as e:
-        print("Error connecting to server:", e)
+    except requests.RequestException as error:
+        print("Error connecting to server:", error)
 
-if _name_ == "_main_":
+
+if __name__ == "__main__":
     print("Enterprise Log Agent is running and sending simulated multi-server logs...")
     while True:
         send_log_to_server()

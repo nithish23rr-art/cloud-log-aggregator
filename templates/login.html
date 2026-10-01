@@ -3,52 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Login - Enterprise Cloud Log Aggregator</title>
+    <title>Sign In - Enterprise Cloud Log Center</title>
     <!-- Bootstrap 5 CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body class="bg-dark d-flex align-items-center justify-content-center vh-100">
-    <div class="card border-0 shadow-lg p-4 rounded-4 bg-white" style="width: 100%; max-width: 420px;">
-        <div class="text-center mb-4">
-            <div class="mb-3">
-                <i class="bi bi-shield-lock-fill text-primary display-5"></i>
+    <div class="card border-0 shadow-lg p-4 rounded-4 bg-white" style="width: 100%; max-width: 440px;">
+        
+        <!-- Top Icon and Header -->
+        <div class="text-center mb-3">
+            <div class="mb-2 d-inline-block p-3 bg-primary bg-opacity-10 rounded-circle">
+                <i class="bi bi-cloud-arrow-up-fill text-primary fs-2"></i>
             </div>
-            <h3 class="fw-bold text-dark">Cloud Log Center</h3>
-            <p class="text-muted small">Enterprise Security & Log Monitoring Portal</p>
+            <h3 class="fw-bold text-dark mb-1">Cloud Log Center</h3>
+            <p class="text-muted small mb-0">Enter your credentials to access the enterprise gateway</p>
         </div>
         
-        <!-- Flash Messages for Errors -->
+        <!-- Flask Flash Messages -->
         {% with messages = get_flashed_messages() %}
           {% if messages %}
-            <div class="alert alert-danger py-2 small rounded-3" role="alert">
-              <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ messages[0] }}
+            <div class="alert alert-danger py-2 small rounded-3 d-flex align-items-center" role="alert">
+              <i class="bi bi-exclamation-circle-fill me-2 fs-6"></i> 
+              <div>{{ messages[0] }}</div>
             </div>
           {% endif %}
         {% endwith %}
 
+        <!-- Login Form -->
         <form method="POST">
+            <!-- Username Field -->
             <div class="mb-3">
-                <label for="username" class="form-label small fw-semibold text-secondary">Username</label>
+                <label for="username" class="form-label small fw-semibold text-secondary text-uppercase" style="font-size: 0.75rem;">Username</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                    <input type="text" class="form-control border-start-0 bg-light" id="username" name="username" placeholder="Enter your username" required>
+                    <input type="text" class="form-control border-start-0 bg-light py-2" id="username" name="username" placeholder="name@company.com" required>
                 </div>
             </div>
-            <div class="mb-4">
-                <label for="password" class="form-label small fw-semibold text-secondary">Password</label>
+
+            <!-- Password Field -->
+            <div class="mb-2">
+                <label for="password" class="form-label small fw-semibold text-secondary text-uppercase" style="font-size: 0.75rem;">Password</label>
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                    <input type="password" class="form-control border-start-0 bg-light" id="password" name="password" placeholder="Enter your password" required>
+                    <input type="password" class="form-control border-start-0 bg-light py-2" id="password" name="password" placeholder="Enter password" required>
+                    <span class="input-group-text bg-light border-start-0" style="cursor: pointer;" id="togglePassword">
+                        <i class="bi bi-eye text-muted" id="eyeIcon"></i>
+                    </span>
                 </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">Sign In to Dashboard</button>
+
+            <!-- Remember me & Forgot password row -->
+            <div class="d-flex justify-content-between align-items-center mb-4 mt-2">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                    <label class="form-check-label text-muted small" for="remember">Remember me</label>
+                </div>
+                <div>
+                    <a href="/forgot-password" class="text-decoration-none small text-primary">Forgot password?</a>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">Sign In</button>
         </form>
         
-        <div class="text-center mt-4 border-top pt-3">
-            <p class="text-muted small mb-0">Don't have an enterprise account? <a href="/signup" class="text-decoration-none fw-semibold">Sign up</a></p>
+        <!-- Footer Register Link (Fixed to show only once) -->
+        <div class="text-center mt-3 pt-2">
+            <p class="text-muted small mb-0">New enterprise team member? <a href="/signup" class="text-decoration-none fw-semibold">Create an account</a></p>
         </div>
     </div>
+
+    <!-- JavaScript for toggling password visibility -->
+    <script>
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+        const eyeIcon = document.querySelector('#eyeIcon');
+
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function () {
+                const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                password.setAttribute('type', type);
+                eyeIcon.classList.toggle('bi-eye');
+                eyeIcon.classList.toggle('bi-eye-slash');
+            });
+        }
+    </script>
 </body>
 </html>

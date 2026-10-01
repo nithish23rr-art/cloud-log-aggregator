@@ -1,36 +1,143 @@
-import time
-import random
+import os
 from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from flask_socketio import SocketIO
 
-class MKNexusUltimateAgent:
-    def _init_(self):
-        self.runtimes = ["Python-Core", "Java-Spring", "NodeJS-API", "Go-Micro", "AWS-Mesh", "Chaos-Validator"]
-        self.levels = ["INFO", "WARNING", "ERROR"]
-        self.telemetry_stream = [
-            "Autonomous Micro-Mesh successfully self-healed deadlocked network nodes.",
-            "Predictive Neural Network verified zero memory leaks across Kubernetes pods.",
-            "Zero-Knowledge Vault cryptographic hash synchronized across Mumbai and London DC.",
-            "Warning: Database connection pool utilization exceeded 85% safety limit.",
-            "Error: NullPointerException encountered in asynchronous worker thread #804.",
-            "Chaos Monkey Validator injected latency spike; automated mesh recovered in 22ms.",
-            "FinOps LLM Advisor optimized storage compression: 93% efficiency attained."
-        ]
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-    def launch_agent(self):
-        print("==================================================")
-        print("  M&K Nexus Cloud Ultimate Autonomous Agent v15.0  ")
-        print("==================================================")
-        print("[*] Telemetry stream mesh initialized successfully...")
-        
-        while True:
-            time.sleep(10)  # Stream simulated high-grade telemetry every 10 seconds
-            level = random.choices(self.levels, weights=[75, 15, 10], k=1)[0]
-            message = random.choice(self.telemetry_stream)
-            tag = random.choice(self.runtimes)
-            
-            timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"[{timestamp}] [Agent Stream] -> Level: {level} | Tag: {tag} | Msg: {message}")
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'mknexus_ultimate.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-if _name_ == "_main_":
-    agent = MKNexusUltimateAgent()
-    agent.launch_agent()
+db = SQLAlchemy(app)
+socketio = SocketIO(app, cors_allowed_origins='*')
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+
+# User Model with Authentication & RBAC
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    role = db.Column(db.String(50), nullable=False, default='Admin')  # Admin / SRE / Developer
+
+
+# Quantum Immutable Log Model
+class Log(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    level = db.Column(db.String(20), nullable=False)  # INFO, WARNING, ERROR
+    message = db.Column(db.String(1000), nullable=False)
+    tag = db.Column(db.String(50), nullable=False)
+    trace_id = db.Column(db.String(50), nullable=True)
+    sentiment = db.Column(db.String(20), nullable=True, default='Neutral')
+    threat_score = db.Column(db.Float, nullable=True, default=0.01)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
+
+
+@app.route('/')
+@login_required
+def index():
+    logs = Log.query.order_by(Log.timestamp.desc()).limit(150).all()
+    return render_template('index.html', logs=logs)
+
+
+@app.route('/add_log', methods=['POST'])
+@login_required
+def add_log():
+    message = request.form.get('message')
+    level = request.form.get('level', 'INFO')
+    tag = request.form.get('tag', 'Python-Core')
+
+    if message:
+        safe_message = message.replace('password=', 'password=**').replace('api_key=', 'api_key=**')
+        trace_id = f"#MK-TRC-{datetime.utcnow().strftime('%H%M%S%f')[:8]}"
+
+        threat = 0.98 if level == 'ERROR' else 0.01
+        sentiment = 'Critical' if level == 'ERROR' else 'Neutral'
+
+        new_log = Log(
+            message=safe_message,
+            level=level,
+            tag=tag,
+            trace_id=trace_id,
+            threat_score=threat,
+            sentiment=sentiment,
+        )
+        db.session.add(new_log)
+        db.session.commit()
+
+        socketio.emit('new_log', {
+            'timestamp': new_log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'level': new_log.level,
+            'tag': new_log.tag,
+            'message': new_log.message,
+            'trace_id': new_log.trace_id,
+            'threat_score': new_log.threat_score,
+        })
+        flash('Secure log successfully ingested into Quantum Vault!', 'success')
+
+    return redirect(url_for('index'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.password == password:
+            login_user(user)
+            flash('Successfully logged into M&K Nexus Cloud!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password. Please try again.', 'danger')
+
+    return render_template('login.html')
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Username already exists. Please choose another.', 'warning')
+            return redirect(url_for('signup'))
+
+        new_user = User(username=username, password=password, role='Admin')
+        db.session.add(new_user)
+        db.session.commit()
+
+        flash('Account created successfully! Please sign in.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('signup.html')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Logged out securely.', 'info')
+    return redirect(url_for('login'))
+
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    socketio.run(app, debug=True, port=5000)
+

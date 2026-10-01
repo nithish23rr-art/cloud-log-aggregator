@@ -1,17 +1,17 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_socketio import SocketIO, emit
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from flask_socketio import SocketIO
 
-app = Flask(_name_)
+app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mknexus_ultimate.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins='*')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -51,35 +51,35 @@ def add_log():
     message = request.form.get('message')
     level = request.form.get('level', 'INFO')
     tag = request.form.get('tag', 'Python-Core')
-    
+
     if message:
         safe_message = message.replace('password=', 'password=**').replace('api_key=', 'api_key=**')
         trace_id = f"#MK-TRC-{datetime.utcnow().strftime('%H%M%S%f')[:8]}"
-        
+
         threat = 0.98 if level == 'ERROR' else 0.01
         sentiment = 'Critical' if level == 'ERROR' else 'Neutral'
 
         new_log = Log(
-            message=safe_message, 
-            level=level, 
-            tag=tag, 
+            message=safe_message,
+            level=level,
+            tag=tag,
             trace_id=trace_id,
             threat_score=threat,
-            sentiment=sentiment
+            sentiment=sentiment,
         )
         db.session.add(new_log)
         db.session.commit()
-        
+
         socketio.emit('new_log', {
             'timestamp': new_log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             'level': new_log.level,
             'tag': new_log.tag,
             'message': new_log.message,
             'trace_id': new_log.trace_id,
-            'threat_score': new_log.threat_score
+            'threat_score': new_log.threat_score,
         })
         flash('Secure log successfully ingested into Quantum Vault!', 'success')
-    
+
     return redirect(url_for('index'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -88,14 +88,14 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
-        
+
         if user and user.password == password:
             login_user(user)
             flash('Successfully logged into M&K Nexus Cloud!', 'success')
             return redirect(url_for('index'))
         else:
             flash('Invalid username or password. Please try again.', 'danger')
-            
+
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -103,19 +103,19 @@ def signup():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Username already exists. Please choose another.', 'warning')
             return redirect(url_for('signup'))
-            
+
         new_user = User(username=username, password=password, role='Admin')
         db.session.add(new_user)
         db.session.commit()
-        
+
         flash('Account created successfully! Please sign in.', 'success')
         return redirect(url_for('login'))
-        
+
     return render_template('signup.html')
 
 @app.route('/logout')
@@ -125,7 +125,7 @@ def logout():
     flash('Logged out securely.', 'info')
     return redirect(url_for('login'))
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True, port=5000)

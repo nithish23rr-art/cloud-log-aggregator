@@ -1,13 +1,14 @@
 import os
 from datetime import datetime
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 from flask_socketio import SocketIO, emit
 
-BASE_DIR = os.path.abspath(os.path.dirname("_file_"))
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-app = Flask("__name__")
+app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'mknexus_ultimate.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -89,21 +90,21 @@ def add_log():
 
 @socketio.on('terminal_command')
 def handle_terminal_command(data):
-    cmd = data.get('command', '').strip()
-    response_msg = f">> {cmd}\n"
-    
+    cmd = (data or {}).get('command', '').strip()
+    response_msg = f'>> {cmd}\n'
+
     if cmd == 'help':
-        response_msg += "Available commands: status, mesh-check, clear, version\n"
+        response_msg += 'Available commands: status, mesh-check, clear, version\n'
     elif cmd == 'status':
-        response_msg += "M&K Nexus Cloud Core: ONLINE\nActive Clusters: Mumbai, London, Singapore\n"
+        response_msg += 'M&K Nexus Cloud Core: ONLINE\nActive Clusters: Mumbai, London, Singapore\n'
     elif cmd == 'mesh-check':
-        response_msg += "Cross-Cluster Latency: 14ms. Zero-Trust Vault: SECURE.\n"
+        response_msg += 'Cross-Cluster Latency: 14ms. Zero-Trust Vault: SECURE.\n'
     elif cmd == 'version':
-        response_msg += "M&K Enterprise Intelligence Terminal v15.0\n"
+        response_msg += 'M&K Enterprise Intelligence Terminal v15.0\n'
     elif cmd == 'clear':
-        response_msg += "CLEAR"
+        response_msg += 'CLEAR'
     else:
-        response_msg += f"Command not recognized: {cmd}. Type 'help' for options.\n"
+        response_msg += f'Command not recognized: {cmd}. Type \'help\' for options.\n'
 
     emit('terminal_response', {'output': response_msg})
 
@@ -154,7 +155,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-if "_name_" == "_main_":
+if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True, port=5000)

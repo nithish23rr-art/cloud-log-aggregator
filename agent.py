@@ -13,12 +13,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'mknexus_ultimate.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# allow web socket connections from browser clients and use threading mode for compatibility
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
-csrf = CSRFProtect(app)
+app.config['WTF_CSRF_ENABLED'] = True
 
 db = SQLAlchemy(app)
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
+csrf = CSRFProtect(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -57,8 +56,8 @@ def index():
     try:
         logs = Log.query.order_by(Log.timestamp.desc()).limit(150).all()
         return render_template('index.html', logs=logs, current_user=current_user)
-    except Exception as e:
-        flash(f'Error loading logs: {str(e)}', 'danger')
+    except Exception as exc:
+        flash(f'Error loading logs: {exc}', 'danger')
         return render_template('index.html', logs=[], current_user=current_user)
 
 
@@ -66,9 +65,9 @@ def index():
 @login_required
 def add_log():
     try:
-        message = request.form.get('message', '').strip()
-        level = request.form.get('level', 'INFO').strip()
-        tag = request.form.get('tag', 'Python-Core').strip()
+        message = (request.form.get('message') or '').strip()
+        level = (request.form.get('level') or 'INFO').strip()
+        tag = (request.form.get('tag') or 'Python-Core').strip()
 
         if not message:
             flash('Log message cannot be empty.', 'warning')
@@ -98,11 +97,10 @@ def add_log():
             'message': new_log.message,
             'trace_id': new_log.trace_id,
         }, broadcast=True)
-
         flash('Secure log successfully ingested into Quantum Vault!', 'success')
-    except Exception as e:
+    except Exception as exc:
         db.session.rollback()
-        flash(f'Error adding log: {str(e)}', 'danger')
+        flash(f'Error adding log: {exc}', 'danger')
 
     return redirect(url_for('index'))
 
@@ -133,8 +131,8 @@ def handle_terminal_command(data):
             response_msg += f"Command not recognized: {cmd}. Type 'help' for options.\n"
 
         emit('terminal_response', {'output': response_msg})
-    except Exception as e:
-        emit('terminal_response', {'output': f'Error processing command: {str(e)}\n'})
+    except Exception as exc:
+        emit('terminal_response', {'output': f'Error processing command: {exc}\n'})
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -149,15 +147,14 @@ def login():
                 return render_template('login.html')
 
             user = User.query.filter_by(username=username).first()
-
             if user and user.password == password:
                 login_user(user)
                 flash('Successfully logged into M&K Nexus Cloud!', 'success')
                 return redirect(url_for('index'))
-            else:
-                flash('Invalid username or password. Please try again.', 'danger')
-        except Exception as e:
-            flash(f'Login error: {str(e)}', 'danger')
+
+            flash('Invalid username or password. Please try again.', 'danger')
+        except Exception as exc:
+            flash(f'Login error: {exc}', 'danger')
 
     return render_template('login.html')
 
@@ -188,9 +185,9 @@ def signup():
 
             flash('Account created successfully! Please sign in.', 'success')
             return redirect(url_for('login'))
-        except Exception as e:
+        except Exception as exc:
             db.session.rollback()
-            flash(f'Signup error: {str(e)}', 'danger')
+            flash(f'Signup error: {exc}', 'danger')
 
     return render_template('signup.html')
 
@@ -204,12 +201,12 @@ def logout():
 
 
 @app.errorhandler(404)
-def not_found(error):
+def not_found(_error):
     return render_template('404.html'), 404
 
 
 @app.errorhandler(500)
-def server_error(error):
+def server_error(_error):
     return render_template('500.html'), 500
 
 

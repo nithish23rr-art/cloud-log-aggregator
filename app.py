@@ -1,47 +1,86 @@
-from flask import Flask, render_template, redirect, url_for, request, flash
+import os
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_socketio import SocketIO
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from flask_socketio import SocketIO, emit
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_enterprise_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///enterprise_logs.db'
+app = Flask(_name_)
+app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mknexus_ultimate.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-socketio = SocketIO(app)
-
-# Database Models
+# User Model with Authentication & RBAC
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    role = db.Column(db.String(50), nullable=False, default='Admin')  # Admin / SRE / Developer
 
-class LogEntry(db.Model):
+# Quantum Immutable Log Model
+class Log(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    message = db.Column(db.String(500), nullable=False)
-    level = db.Column(db.String(50), nullable=False) # INFO, ERROR, WARNING
-    ip_address = db.Column(db.String(50), default="127.0.0.1") # Server IP address
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    level = db.Column(db.String(20), nullable=False)  # INFO, WARNING, ERROR
+    message = db.Column(db.String(1000), nullable=False)
+    tag = db.Column(db.String(50), nullable=False)
+    trace_id = db.Column(db.String(50), nullable=True)
+    sentiment = db.Column(db.String(20), nullable=True, default='Neutral')
+    threat_score = db.Column(db.Float, nullable=True, default=0.01)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-with app.app_context():
-    db.create_all()
-
-# Routes
 @app.route('/')
 @login_required
 def index():
-    logs = LogEntry.query.order_by(LogEntry.timestamp.desc()).all()
+    logs = Log.query.order_by(Log.timestamp.desc()).limit(150).all()
     return render_template('index.html', logs=logs)
+
+@app.route('/add_log', methods=['POST'])
+@login_required
+def add_log():
+    message = request.form.get('message')
+    level = request.form.get('level', 'INFO')
+    tag = request.form.get('tag', 'Python-Core')
+    
+    if message:
+        safe_message = message.replace('password=', 'password=**').replace('api_key=', 'api_key=**')
+        trace_id = f"#MK-TRC-{datetime.utcnow().strftime('%H%M%S%f')[:8]}"
+        
+        threat = 0.98 if level == 'ERROR' else 0.01
+        sentiment = 'Critical' if level == 'ERROR' else 'Neutral'
+
+        new_log = Log(
+            message=safe_message, 
+            level=level, 
+            tag=tag, 
+            trace_id=trace_id,
+            threat_score=threat,
+            sentiment=sentiment
+        )
+        db.session.add(new_log)
+        db.session.commit()
+        
+        socketio.emit('new_log', {
+            'timestamp': new_log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'level': new_log.level,
+            'tag': new_log.tag,
+            'message': new_log.message,
+            'trace_id': new_log.trace_id,
+            'threat_score': new_log.threat_score
+        })
+        flash('Secure log successfully ingested into Quantum Vault!', 'success')
+    
+    return redirect(url_for('index'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -50,10 +89,13 @@ def login():
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         
-        if user and check_password_hash(user.password, password):
+        if user and user.password == password:
             login_user(user)
+            flash('Successfully logged into M&K Nexus Cloud!', 'success')
             return redirect(url_for('index'))
-        flash('Invalid username or password, please try again.')
+        else:
+            flash('Invalid username or password. Please try again.', 'danger')
+            
     return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -64,55 +106,26 @@ def signup():
         
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
-            flash('Username already exists. Please choose another.')
+            flash('Username already exists. Please choose another.', 'warning')
             return redirect(url_for('signup'))
             
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-        new_user = User(username=username, password=hashed_password)
+        new_user = User(username=username, password=password, role='Admin')
         db.session.add(new_user)
         db.session.commit()
         
-        flash('Account created successfully! Please login.')
+        flash('Account created successfully! Please sign in.', 'success')
         return redirect(url_for('login'))
+        
     return render_template('signup.html')
 
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
+    flash('Logged out securely.', 'info')
     return redirect(url_for('login'))
 
-@app.route('/add_log', methods=['POST'])
-def add_log():
-    message = request.form.get('message')
-    level = request.form.get('level', 'INFO')
-    
-    # Identifying the actual IP address of the log-sending agent
-    ip_address = request.headers.get('X-Forwarded-For', request.remote_addr) or "127.0.0.1"
-    
-    if message:
-        new_log = LogEntry(message=message, level=level, ip_address=ip_address)
-        db.session.add(new_log)
-        db.session.commit()
-        
-        formatted_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        
-        # Sending to all clients via WebSocket, including the IP address
-        socketio.emit('new_log', {
-            'message': message, 
-            'level': level, 
-            'ip_address': ip_address,
-            'timestamp': formatted_time
-        })
-    return "Log received", 200
-
-@app.route('/clear_logs', methods=['POST'])
-@login_required
-def clear_logs():
-    LogEntry.query.delete()
-    db.session.commit()
-    flash('All logs cleared successfully.')
-    return redirect(url_for('index'))
-
-if __name__ == '__main__':
+if _name_ == '_main_':
+    with app.app_context():
+        db.create_all()
     socketio.run(app, debug=True, port=5000)

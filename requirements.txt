@@ -6,3 +6,5 @@ werkzeug==3.0.1
 requests==2.31.0
 python-socketio==5.11.1
 python-engineio==4.8.2
+eventlet==0.34.1
+sqlalchemy==2.0.19

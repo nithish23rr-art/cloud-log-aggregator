@@ -11,13 +11,13 @@
     <!-- Chart.js for Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Socket.IO CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         .highlight { background-color: #ffc107; color: #000; padding: 0.1rem 0.2rem; border-radius: 0.2rem; }
         .log-row { cursor: pointer; transition: background-color 0.2s; }
         .pulse-dot { width: 10px; height: 10px; background-color: #198754; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 rgba(25, 135, 84, 0.4); animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); } 100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); } }
-        .terminal-box { background-color: #0b0f19; color: #00ff66; font-family: monospace; padding: 15px; border-radius: 8px; max-height: 220px; overflow-y: auto; }
+        .terminal-box { background-color: #0b0f19; color: #00ff66; font-family: monospace; padding: 15px; border-radius: 8px; max-height: 220px; overflow-y: auto; white-space: pre-line; }
         .ai-banner { background: linear-gradient(135deg, #09090b 100%, #1e1b4b 0%); border: 1px solid rgba(255,255,255,0.15); color: white; border-radius: 1rem; }
         .starred { color: #ffc107 !important; }
     </style>
@@ -165,7 +165,7 @@
                         <h5 class="fw-bold mb-0 d-flex align-items-center"><i class="bi bi-activity text-success me-2"></i>M&K Live Stream</h5>
                     </div>
                     <div class="col-md-9 d-flex justify-content-md-end gap-2 flex-wrap align-items-center">
-                        <input type="text" id="searchInput" class="form-control form-control-sm w-auto" style="min-width: 130px;" placeholder="Regex Search..." onkeyup="filterAndHighlightLogs()">
+                        <input type="text" id="searchInput" class="form-control form-control-sm w-auto" style="min-width: 130px;" placeholder="Regex Search..." onkeyup="filterLogs()">
                         <button class="btn btn-outline-success btn-sm text-nowrap" onclick="exportLogsCSV()"><i class="bi bi-download me-1"></i>Export</button>
                     </div>
                 </div>
@@ -185,13 +185,13 @@
                         </thead>
                         <tbody id="logList">
                             {% for log in logs %}
-                                <tr class="log-row" data-level="{{ log.level }}" data-service="Mumbai">
+                                <tr class="log-row" data-level="{{ log.level }}">
                                     <td><i class="bi bi-star"></i></td>
                                     <td class="text-muted small">[{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}]</td>
-                                    <td class="text-muted small font-monospace">#MK-TRC-{{ loop.index0 + 1042 }}</td>
-                                    <td><span class="badge bg-danger">{{ log.level }}</span></td>
-                                    <td><span class="badge bg-secondary">Mumbai-DC</span></td>
-                                    <td><span class="badge bg-success">Neutral</span></td>
+                                    <td class="text-muted small font-monospace">{{ log.trace_id or '#MK-TRC-1042' }}</td>
+                                    <td><span class="badge bg-{{ 'danger' if log.level == 'ERROR' else ('warning' if log.level == 'WARNING' else 'info') }}">{{ log.level }}</span></td>
+                                    <td><span class="badge bg-secondary">{{ log.tag }}</span></td>
+                                    <td><span class="badge bg-success">{{ log.sentiment }}</span></td>
                                     <td class="fw-medium log-message">{{ log.message }}</td>
                                 </tr>
                             {% endfor %}
@@ -211,7 +211,8 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="terminal-box" id="terminalOutput">M&K Nexus Cloud Enterprise Terminal v15.0 Active...</div>
+                    <div class="terminal-box" id="terminalOutput">M&K Nexus Cloud Enterprise Terminal v15.0 Active...
+Type 'help' for available commands.</div>
                     <div class="input-group mt-3">
                         <span class="input-group-text bg-secondary text-light border-0 font-monospace">mk@nexus~$</span>
                         <input type="text" id="terminalInput" class="form-control bg-black text-success border-0 font-monospace" placeholder="enter command...">
@@ -221,12 +222,10 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function changeThemeVariant(theme) { document.getElementById('htmlRoot').setAttribute('data-bs-theme', theme); }
-        function runChaosMonkey() { alert("M&K Chaos Monkey Validator injected test fault: Mesh recovered successfully."); }
-        function openVisualRegexBuilder() { alert("M&K Visual Regex Builder opened."); }
-        function exportLogsCSV() { alert("Audit CSV exported successfully!"); }
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script> 
+    <!-- External JavaScript File -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

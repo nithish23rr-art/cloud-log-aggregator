@@ -3,11 +3,11 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+BASE_DIR = os.path.abspath(os.path.dirname("_file_"))
 
-app = Flask(__name__)
+app = Flask("__name__")
 app.config['SECRET_KEY'] = 'mk-nexus-ultimate-enterprise-secret-2026'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'mknexus_ultimate.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -20,19 +20,17 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 
-# User Model with Authentication & RBAC
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='Admin')  # Admin / SRE / Developer
+    role = db.Column(db.String(50), nullable=False, default='Admin')
 
 
-# Quantum Immutable Log Model
 class Log(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    level = db.Column(db.String(20), nullable=False)  # INFO, WARNING, ERROR
+    level = db.Column(db.String(20), nullable=False)
     message = db.Column(db.String(1000), nullable=False)
     tag = db.Column(db.String(50), nullable=False)
     trace_id = db.Column(db.String(50), nullable=True)
@@ -60,7 +58,7 @@ def add_log():
     tag = request.form.get('tag', 'Python-Core')
 
     if message:
-        safe_message = message.replace('password=', 'password=**').replace('api_key=', 'api_key=**')
+        safe_message = message.replace('password=', 'password=*').replace('api_key=', 'api_key=*')
         trace_id = f"#MK-TRC-{datetime.utcnow().strftime('%H%M%S%f')[:8]}"
 
         threat = 0.98 if level == 'ERROR' else 0.01
@@ -83,11 +81,31 @@ def add_log():
             'tag': new_log.tag,
             'message': new_log.message,
             'trace_id': new_log.trace_id,
-            'threat_score': new_log.threat_score,
         })
         flash('Secure log successfully ingested into Quantum Vault!', 'success')
 
     return redirect(url_for('index'))
+
+
+@socketio.on('terminal_command')
+def handle_terminal_command(data):
+    cmd = data.get('command', '').strip()
+    response_msg = f">> {cmd}\n"
+    
+    if cmd == 'help':
+        response_msg += "Available commands: status, mesh-check, clear, version\n"
+    elif cmd == 'status':
+        response_msg += "M&K Nexus Cloud Core: ONLINE\nActive Clusters: Mumbai, London, Singapore\n"
+    elif cmd == 'mesh-check':
+        response_msg += "Cross-Cluster Latency: 14ms. Zero-Trust Vault: SECURE.\n"
+    elif cmd == 'version':
+        response_msg += "M&K Enterprise Intelligence Terminal v15.0\n"
+    elif cmd == 'clear':
+        response_msg += "CLEAR"
+    else:
+        response_msg += f"Command not recognized: {cmd}. Type 'help' for options.\n"
+
+    emit('terminal_response', {'output': response_msg})
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -136,8 +154,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-if __name__ == '__main__':
+if "_name_" == "_main_":
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True, port=5000)
-

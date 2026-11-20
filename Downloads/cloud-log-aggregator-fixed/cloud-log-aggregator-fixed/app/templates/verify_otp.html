@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Developer verification — M&K Nexus Cloud{% endblock %}
+{% block content %}
+<main class="min-h-screen grid place-items-center p-5">
+  <!-- Add a /verify_otp route that calls verify_developer_otp(email, otp). Pass `email` to the template. -->
+  <form method="POST" action="/verify_otp" id="f" class="glass p-8 w-full max-w-sm space-y-4 text-center">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="email" value="{{ email|default('') }}">
+    <input type="hidden" name="otp" id="otp">
+    <i data-lucide="shield-ellipsis" class="mx-auto text-emerald-400 w-9 h-9"></i>
+    <h1 class="text-xl font-semibold text-white">Enter your 6-digit code</h1>
+    <p class="text-xs text-slate-400">We emailed a code to {{ email|default('your developer email') }}.</p>
+    <div class="flex justify-center gap-2" id="boxes">
+      {% for i in range(6) %}<input inputmode="numeric" maxlength="1" class="inp !w-10 text-center text-lg font-mono">{% endfor %}
+    </div>
+    <button class="btn w-full">Verify access</button>
+    <button type="submit" formaction="/resend_otp" formnovalidate class="text-xs text-slate-400 hover:text-cyan-300">Resend code</button>
+  </form>
+</main>
+{% endblock %}
+{% block scripts %}<script>
+const bx=[...document.querySelectorAll('#boxes input')];
+bx.forEach((b,i)=>{b.addEventListener('input',()=>{b.value=b.value.replace(/\D/g,'');if(b.value&&bx[i+1])bx[i+1].focus();});
+  b.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!b.value&&bx[i-1])bx[i-1].focus();});
+  b.addEventListener('paste',e=>{const t=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,6);if(!t)return;e.preventDefault();t.split('').forEach((c,j)=>bx[j].value=c);});});
+document.getElementById('f').addEventListener('submit',()=>{document.getElementById('otp').value=bx.map(b=>b.value).join('');});
+</script>{% endblock %}

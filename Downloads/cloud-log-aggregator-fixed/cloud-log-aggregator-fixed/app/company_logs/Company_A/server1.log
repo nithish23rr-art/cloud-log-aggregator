@@ -1,0 +1,7 @@
+2026-11-19 10:00:01 INFO Service started on port 8080
+2026-11-19 10:00:05 DEBUG Cache warmed in 120ms
+2026-11-19 10:01:10 WARNING Disk usage at 82%
+2026-11-19 10:02:33 ERROR Database connection timeout
+2026-11-19 10:03:47 UNAUTHORIZED access attempt from 10.0.0.77
+2026-11-19 10:04:12 CRITICAL Payment service crashed
+2026-11-19 10:05:00 INFO Health check ok

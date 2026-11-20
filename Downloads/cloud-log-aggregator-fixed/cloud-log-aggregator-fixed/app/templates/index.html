@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — M&K Nexus Cloud{% endblock %}
+{% block content %}
+<!-- TOP BAR -->
+<header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/70 border-b border-white/10">
+  <div class="max-w-7xl mx-auto flex items-center justify-between px-5 py-3">
+    <div class="flex items-center gap-2 font-semibold"><i data-lucide="shield-check" class="text-cyan-400"></i> M&amp;K Nexus Cloud
+      <span class="ml-3 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-400/30">Vault secure</span>
+      <span id="ws" class="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-300">offline</span></div>
+    <div class="flex items-center gap-3 text-sm"><span class="text-slate-400">{{ current_user.username }} · {{ current_user.role }}</span><a class="btn2" href="{{ url_for('logout') }}">Sign out</a></div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-5 space-y-5">
+  <!-- STATS -->
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="glass p-4"><p class="text-xs text-slate-400">Logs shown</p><p id="sTotal" class="text-2xl font-semibold text-white">0</p></div>
+    <div class="glass p-4"><p class="text-xs text-slate-400">Errors</p><p id="sErr" class="text-2xl font-semibold text-red-400">0</p></div>
+    <div class="glass p-4"><p class="text-xs text-slate-400">Warnings</p><p id="sWarn" class="text-2xl font-semibold text-amber-300">0</p></div>
+    <div class="glass p-4"><p class="text-xs text-slate-400">Clusters</p><p class="text-2xl font-semibold text-cyan-300">3 <span class="text-xs text-slate-400">MUM · LON · SIN</span></p></div>
+  </section>
+
+  <!-- LIVE LOG TABLE -->
+  <section class="glass p-4">
+    <div class="flex flex-wrap gap-2 items-center justify-between mb-3">
+      <h2 class="font-semibold text-white flex items-center gap-2"><i data-lucide="activity" class="w-4 text-emerald-400"></i> Live logs</h2>
+      <div class="flex gap-2">
+        <select id="flt" class="inp !w-auto"><option value="">All levels</option><option>INFO</option><option>WARNING</option><option>ERROR</option><option>CRITICAL</option></select>
+        <button onclick="openModal()" class="btn">Add log</button>
+        <button onclick="exportCsv()" class="btn2 flex items-center gap-1"><i data-lucide="file-down" class="w-4"></i> Export CSV</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+      <table class="w-full text-sm"><thead class="text-left text-xs text-slate-400 sticky top-0 bg-slate-900"><tr><th class="py-2 pr-3">Time</th><th>Level</th><th>Tag</th><th>Message</th><th>Trace</th><th>Threat</th></tr></thead>
+      <tbody id="logs">
+      {% for l in logs %}
+        <tr class="border-t border-white/5 log-row" data-level="{{ l.level }}" data-ts="{{ l.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}" data-tag="{{ l.tag }}" data-score="{{ l.threat_score }}">
+          <td class="py-2 pr-3 whitespace-nowrap text-slate-400">{{ l.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td><span class="lvl">{{ l.level }}</span></td><td>{{ l.tag }}</td>
+          <td class="msg max-w-md break-words">{{ l.message }}</td><td class="font-mono text-xs text-cyan-300">{{ l.trace_id }}</td>
+          <td><span class="thr">{{ l.threat_score }}</span></td></tr>
+      {% else %}<tr id="empty"><td colspan="6" class="py-8 text-center text-slate-500">No logs yet. Add your first log.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </section>
+
+  <div class="grid lg:grid-cols-2 gap-5">
+    <!-- TERMINAL (Socket.IO event: terminal_command -> terminal_response) -->
+    <section class="glass p-4">
+      <h2 class="font-semibold text-white flex items-center gap-2 mb-2"><i data-lucide="terminal" class="w-4 text-cyan-400"></i> Cloud terminal</h2>
+      <pre id="term" class="h-56 overflow-y-auto bg-black/50 rounded p-3 text-xs text-emerald-300 whitespace-pre-wrap">Type 'help' for commands: status, mesh-check, version, clear
+</pre>
+      <form id="tf" class="flex gap-2 mt-2"><span class="text-emerald-400 font-mono pt-2">$</span><input id="tc" class="inp font-mono" autocomplete="off" placeholder="status"><button class="btn2">Run</button></form>
+    </section>
+
+    <!-- LIVE TELEMETRY (subscribe_live_logs -> new_live_log) -->
+    <section class="glass p-4">
+      <h2 class="font-semibold text-white flex items-center gap-2 mb-2"><i data-lucide="radio" class="w-4 text-emerald-400"></i> Live telemetry</h2>
+      <div class="flex gap-2 mb-2"><input id="clu" class="inp" value="Company_A" placeholder="Cluster / company"><button onclick="subscribe()" class="btn2">Subscribe</button></div>
+      <ul id="tele" class="h-48 overflow-y-auto text-xs font-mono space-y-1 text-slate-300"><li class="text-slate-500">Not subscribed.</li></ul>
+    </section>
+  </div>
+
+  <!-- LOG HUB UPLOAD (POST /api/v3/hub/ingest) -->
+  <section class="glass p-4">
+    <h2 class="font-semibold text-white flex items-center gap-2 mb-3"><i data-lucide="upload-cloud" class="w-4 text-cyan-400"></i> Log Hub upload</h2>
+    <div class="grid md:grid-cols-3 gap-2">
+      <input id="hk" class="inp" type="password" placeholder="X-API-Key">
+      <input id="hf" class="inp" type="file" accept=".log,.txt">
+      <select id="hep" class="inp"><option value="/api/v3/hub/pull">Auto-pull company logs (API key only)</option><option value="/api/v3/hub/ingest">Log Hub (v3) - upload file</option><option value="/api/v2/ingest-logs">Enterprise (v2)</option></select>
+    </div>
+    <button onclick="hubUpload()" class="btn mt-3">Analyze logs</button>
+    <div id="hubOut" class="mt-4 hidden space-y-3">
+      <div class="flex flex-wrap gap-3 items-center"><div class="glass px-4 py-2">Cluster: <b id="hCl"></b></div><div class="glass px-4 py-2">Threat index: <b id="hTi"></b></div><div class="glass px-4 py-2">Total: <b id="hTot"></b></div></div>
+      <div id="hSum" class="grid grid-cols-3 md:grid-cols-7 gap-2 text-center text-xs"></div>
+      <div class="overflow-x-auto max-h-72 overflow-y-auto"><table class="w-full text-xs"><thead class="text-slate-400 text-left"><tr><th>Category</th><th>Message</th><th>Score</th><th>Time</th></tr></thead><tbody id="hRows"></tbody></table></div>
+    </div>
+  </section>
+</main>
+
+<!-- ADD LOG MODAL (POST /add_log) -->
+<div id="modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm grid place-items-center p-5">
+  <form method="POST" action="{{ url_for('add_log') }}" class="glass p-6 w-full max-w-md space-y-3 bg-slate-900">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h3 class="font-semibold text-white">Add secure log</h3>
+    <select name="level" class="inp"><option>INFO</option><option>WARNING</option><option>ERROR</option><option>CRITICAL</option></select>
+    <input name="tag" class="inp" value="Python-Core" maxlength="50" placeholder="Tag">
+    <textarea name="message" class="inp" rows="4" maxlength="1000" required placeholder="Log message"></textarea>
+    <p class="text-xs text-slate-400">password= and api_key= values are masked automatically. A trace ID (#MK-TRC-…) is generated.</p>
+    <div class="flex justify-end gap-2"><button type="button" onclick="closeModal()" class="btn2">Cancel</button><button class="btn">Ingest log</button></div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const $=id=>document.getElementById(id);
+const COL={INFO:'text-cyan-300',WARNING:'text-amber-300',ERROR:'text-red-400',CRITICAL:'text-red-300 font-bold',SECURITY:'text-fuchsia-300'};
+function thrBadge(s){s=parseFloat(s);const c=s>=.8?'bg-red-500/20 text-red-300':s>=.4?'bg-amber-500/20 text-amber-300':'bg-emerald-500/20 text-emerald-300';return `<span class="px-2 py-0.5 rounded-full text-xs ${c}">${s}</span>`}
+function paint(){document.querySelectorAll('.log-row').forEach(r=>{const l=r.querySelector('.lvl');l.className='lvl '+(COL[r.dataset.level]||'');const t=r.querySelector('.thr');t.outerHTML=thrBadge(r.dataset.score)});stats();}
+function stats(){const rows=[...document.querySelectorAll('.log-row')];$('sTotal').textContent=rows.length;$('sErr').textContent=rows.filter(r=>['ERROR','CRITICAL'].includes(r.dataset.level)).length;$('sWarn').textContent=rows.filter(r=>r.dataset.level==='WARNING').length;}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+paint();
+function openModal(){$('modal').classList.remove('hidden')}function closeModal(){$('modal').classList.add('hidden')}
+$('flt').onchange=e=>document.querySelectorAll('.log-row').forEach(r=>r.style.display=(!e.target.value||r.dataset.level===e.target.value)?'':'none');
+
+// ---- Socket.IO ----
+const socket=io();
+socket.on('connect',()=>{$('ws').textContent='live';$('ws').className='text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300'});
+socket.on('disconnect',()=>{$('ws').textContent='offline';$('ws').className='text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-300'});
+socket.on('new_log',d=>{ // backend sends no score: mirror its rule (ERROR=0.98 else 0.01)
+  const e=$('empty');if(e)e.remove();
+  const score=d.level==='ERROR'?0.98:0.01, tr=document.createElement('tr');
+  tr.className='border-t border-white/5 log-row bg-cyan-400/10';tr.dataset.level=d.level;tr.dataset.ts=d.timestamp;tr.dataset.tag=d.tag;tr.dataset.score=score;
+  tr.innerHTML=`<td class="py-2 pr-3 whitespace-nowrap text-slate-400">${esc(d.timestamp)}</td><td><span class="lvl">${esc(d.level)}</span></td><td>${esc(d.tag)}</td><td class="msg max-w-md break-words">${esc(d.message)}</td><td class="font-mono text-xs text-cyan-300">${esc(d.trace_id)}</td><td><span class="thr"></span></td>`;
+  $('logs').prepend(tr);paint();setTimeout(()=>tr.classList.remove('bg-cyan-400/10'),2000);});
+
+// ---- Terminal ----
+$('tf').onsubmit=e=>{e.preventDefault();const c=$('tc').value.trim();if(!c)return;socket.emit('terminal_command',{command:c});$('tc').value='';};
+socket.on('terminal_response',d=>{const t=$('term');if(d.output.includes('CLEAR')){t.textContent='';return}t.textContent+=d.output;t.scrollTop=t.scrollHeight;});
+
+// ---- Live telemetry (needs register_socket_events(socketio) in app.py) ----
+function subscribe(){$('tele').innerHTML='';socket.emit('subscribe_live_logs',{company:$('clu').value||'Default-Cluster'});}
+socket.on('live_response',d=>$('tele').insertAdjacentHTML('afterbegin',`<li class="text-emerald-300">${esc(d.status)}</li>`));
+socket.on('new_live_log',d=>$('tele').insertAdjacentHTML('afterbegin',`<li><span class="text-slate-500">${esc(d.timestamp)}</span> [${esc(d.cluster)}] ${esc(d.log)}</li>`));
+
+// ---- Compliance CSV (POST JSON; CSRF header required) ----
+async function exportCsv(){
+  const logs=[...document.querySelectorAll('.log-row')].map(r=>({timestamp:r.dataset.ts,severity:r.dataset.level,tag:r.dataset.tag,message:r.querySelector('.msg').textContent,threat_score:r.dataset.score}));
+  if(!logs.length)return alert('No logs to export.');
+  const r=await fetch('/api/v3/reports/export-csv',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name=csrf-token]').content},body:JSON.stringify({logs})});
+  if(!r.ok)return alert('Export failed ('+r.status+')');
+  const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='enterprise_compliance_report.csv';a.click();
+}
+
+// ---- Log Hub upload (X-API-Key + multipart file) ----
+async function hubUpload(){
+  const ep=$('hep').value,pull=ep.endsWith('/pull'),f=$('hf').files[0],k=$('hk').value.trim();
+  if(!k||(!pull&&!f))return alert(pull?'API key is required.':'API key and a .log/.txt file are required.');
+  const fd=new FormData();if(!pull)fd.append('file',f);
+  try{
+    const r=await fetch(ep,{method:'POST',headers:{'X-API-Key':k},body:pull?undefined:fd});const d=await r.json();
+    if(!r.ok)return alert(d.error||'Upload failed');
+    const sum=d.category_summary||d.summary, data=d.categorized_data||d.detailed_logs;
+    $('hubOut').classList.remove('hidden');$('hCl').textContent=d.cluster_hub||d.company;$('hTi').textContent=d.cluster_threat_index;$('hTot').textContent=d.total_logs_analyzed||d.total_logs_processed;
+    $('hSum').innerHTML=Object.entries(sum).map(([n,v])=>`<div class="glass p-2"><div class="text-slate-400">${n}</div><div class="text-lg text-white">${v}</div></div>`).join('');
+    $('hRows').innerHTML=Object.entries(data).flatMap(([c,a])=>a.map(x=>`<tr class="border-t border-white/5"><td class="py-1 ${COL[c]||''}">${c}</td><td class="break-all">${esc(x.message)}</td><td>${thrBadge(x.threat_score)}</td><td class="text-slate-400">${x.timestamp}</td></tr>`)).join('');
+  }catch(e){alert('Network error: '+e.message)}
+}
+</script>
+{% endblock %}
+

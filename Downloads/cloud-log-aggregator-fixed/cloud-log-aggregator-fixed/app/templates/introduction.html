@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}M&K Nexus Cloud — Zero-Trust Log Intelligence{% endblock %}
+{% block content %}
+<header class="max-w-6xl mx-auto flex items-center justify-between p-5">
+  <div class="flex items-center gap-2 font-semibold"><i data-lucide="shield-check" class="text-cyan-400"></i> M&amp;K Nexus Cloud</div>
+  <nav class="flex gap-3"><a href="{{ url_for('login') }}" class="btn2">Sign in</a><a href="{{ url_for('signup') }}" class="btn">Create account</a></nav>
+</header>
+<section class="max-w-6xl mx-auto px-5 pt-20 pb-16 text-center">
+  <span class="inline-flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-400/30"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> All clusters operational</span>
+  <h1 class="mt-6 text-4xl md:text-6xl font-bold tracking-tight text-white">See every threat across every cluster, as it happens.</h1>
+  <p class="mt-5 text-slate-400 max-w-2xl mx-auto">Ingest logs from Mumbai, London and Singapore into one zero-trust vault. Score threats with AI and alert your team in seconds.</p>
+  <div class="mt-8 flex justify-center gap-3"><a href="{{ url_for('signup') }}" class="btn">Start monitoring</a><a href="{{ url_for('login') }}" class="btn2">Open console</a></div>
+</section>
+<section class="max-w-6xl mx-auto px-5 grid md:grid-cols-3 gap-4">
+  {% for city, lat in [('Mumbai','Core cluster · 14ms mesh'),('London','EU compliance cluster'),('Singapore','APAC edge cluster')] %}
+  <div class="glass p-5"><i data-lucide="server" class="text-cyan-400"></i><h3 class="mt-3 font-semibold text-white">{{ city }}</h3><p class="text-sm text-slate-400">{{ lat }}</p></div>
+  {% endfor %}
+</section>
+<section class="max-w-6xl mx-auto px-5 py-14 grid md:grid-cols-3 gap-4">
+  {% for ic, t, d in [
+   ('activity','Live log stream','New logs appear instantly over WebSockets.'),
+   ('brain-circuit','AI threat scoring','Scores from 0.0 to 10.0 with automatic summaries.'),
+   ('mail-warning','Instant alerts','Critical and security logs email your developers.'),
+   ('lock-keyhole','Quantum Vault','Passwords and API keys are masked before storage.'),
+   ('upload-cloud','Log Hub','Clients upload .log files with their API key.'),
+   ('file-down','Compliance reports','Export audit-ready CSV in one click.')] %}
+  <div class="glass p-5"><i data-lucide="{{ ic }}" class="text-emerald-400"></i><h3 class="mt-3 font-semibold text-white">{{ t }}</h3><p class="text-sm text-slate-400 mt-1">{{ d }}</p></div>
+  {% endfor %}
+</section>
+<footer class="text-center text-xs text-slate-500 pb-8">© M&amp;K Nexus Cloud</footer>
+{% endblock %}

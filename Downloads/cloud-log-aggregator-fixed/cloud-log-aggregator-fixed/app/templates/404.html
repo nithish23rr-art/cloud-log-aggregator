@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}404 — Not found{% endblock %}
+{% block content %}
+<main class="min-h-screen grid place-items-center p-5"><div class="glass p-8 max-w-md w-full text-center">
+  <div class="text-6xl font-bold text-cyan-400">404</div>
+  <h1 class="mt-2 text-xl font-semibold text-white">This page does not exist</h1>
+  <p class="text-sm text-slate-400 mt-2">The address may be mistyped or the resource was moved.</p>
+  <pre class="mt-4 text-left text-xs bg-black/40 rounded p-3 text-emerald-300 overflow-x-auto">$ diagnostics
+path    : {{ request.path }}
+method  : {{ request.method }}
+cluster : Mumbai (reachable)
+auth    : {{ 'signed in' if current_user.is_authenticated else 'signed out' }}</pre>
+  <a href="/" class="btn inline-block mt-5">Back to dashboard</a>
+</div></main>
+{% endblock %}

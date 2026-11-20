@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sign in — M&K Nexus Cloud{% endblock %}
+{% block content %}
+<main class="min-h-screen grid place-items-center p-5">
+  <form method="POST" action="{{ url_for('login') }}" class="glass p-8 w-full max-w-sm space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="text-center"><i data-lucide="shield-check" class="mx-auto text-cyan-400 w-9 h-9"></i><h1 class="mt-2 text-xl font-semibold text-white">Sign in to Nexus Cloud</h1></div>
+    <div><label class="text-xs text-slate-400">Username</label><input class="inp mt-1" name="username" required minlength="3" autocomplete="username"></div>
+    <div><label class="text-xs text-slate-400">Password</label><input class="inp mt-1" type="password" name="password" required autocomplete="current-password"></div>
+    <div><input type="text" name="otp" style="display:none"></div>
+
+    <button class="btn w-full">Sign in</button>
+    <div class="flex justify-between text-xs text-slate-400"><a class="hover:text-cyan-300" href="/forgot_password">Forgot password?</a><a class="hover:text-cyan-300" href="{{ url_for('signup') }}">Create account</a></div>
+  </form>
+</main>
+{% endblock %}

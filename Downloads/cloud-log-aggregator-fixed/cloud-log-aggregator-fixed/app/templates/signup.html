@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Create account — M&K Nexus Cloud{% endblock %}
+{% block content %}
+<main class="min-h-screen grid place-items-center p-5">
+  <form method="POST" action="{{ url_for('signup') }}" id="f" class="glass p-8 w-full max-w-sm space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="text-center"><i data-lucide="user-plus" class="mx-auto text-emerald-400 w-9 h-9"></i><h1 class="mt-2 text-xl font-semibold text-white">Create your account</h1></div>
+    <div><label class="text-xs text-slate-400">Username (3+ characters)</label><input class="inp mt-1" name="username" required minlength="3"></div>
+    <div><label class="text-xs text-slate-400">Email</label><input class="inp mt-1" type="email" name="email" required></div>
+    <div><label class="text-xs text-slate-400">Role</label><select class="inp mt-1" name="role" required><option value="Admin">Admin</option><option value="User">User</option></select></div>
+    <div><label class="text-xs text-slate-400">Password</label><input id="p1" class="inp mt-1" type="password" name="password" required minlength="8"><div class="h-1 mt-2 rounded bg-white/10"><div id="bar" class="h-1 rounded bg-red-500 w-0 transition-all"></div></div></div>
+    <div><label class="text-xs text-slate-400">Confirm password</label><input id="p2" class="inp mt-1" type="password" required></div>
+    <p id="err" class="text-xs text-red-400 hidden">Passwords do not match.</p>
+    <button class="btn w-full">Create account</button>
+    <p class="text-xs text-center text-slate-400">Already registered? <a class="text-cyan-300" href="{{ url_for('login') }}">Sign in</a></p>
+  </form>
+</main>
+{% endblock %}
+{% block scripts %}<script>
+const p1=document.getElementById('p1'),p2=document.getElementById('p2'),bar=document.getElementById('bar');
+p1.addEventListener('input',()=>{let s=0,v=p1.value;if(v.length>=8)s++;if(/[A-Z]/.test(v))s++;if(/\d/.test(v))s++;if(/\W/.test(v))s++;
+  bar.style.width=s*25+'%';bar.className='h-1 rounded transition-all '+['bg-red-500','bg-red-500','bg-amber-400','bg-cyan-400','bg-emerald-400'][s];});
+document.getElementById('f').addEventListener('submit',e=>{if(p1.value!==p2.value){e.preventDefault();document.getElementById('err').classList.remove('hidden');}});
+</script>{% endblock %}
